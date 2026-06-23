@@ -1,22 +1,69 @@
 package com.digilayn.laynrider
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
+import com.digilayn.laynfleet.core.data.DemoFleetRepository
 import com.digilayn.laynfleet.core.domain.FleetSnapshot
+import com.digilayn.laynfleet.core.domain.Membership
+import com.digilayn.laynfleet.core.domain.Products
 import com.digilayn.laynfleet.core.ui.ActionGrid
+import com.digilayn.laynfleet.core.ui.ScreenColumn
 import com.digilayn.laynfleet.core.ui.SectionTitle
 import com.digilayn.laynfleet.core.ui.TripList
+import com.digilayn.laynfleet.core.ui.theme.LaynFleetTheme
 
 @Composable
-fun RiderDashboard(snapshot: FleetSnapshot) {
-    SectionTitle("Today’s trips", "Live status from your fleet team")
-    TripList(snapshot.trips)
-    SectionTitle("Your fleet space", "Passenger and subscription shortcuts")
+fun RiderDashboard(snapshot: FleetSnapshot, membership: Membership) {
+    val riderTrips = snapshot.tripsForRider(membership.operator.id)
+
+    SectionTitle(
+        stringResource(R.string.todays_trips),
+        stringResource(R.string.live_fleet_status),
+    )
+    if (riderTrips.isEmpty()) {
+        SectionTitle(
+            stringResource(R.string.no_trips_today),
+            stringResource(R.string.no_trips_explanation),
+        )
+    } else {
+        TripList(riderTrips)
+    }
+    SectionTitle(
+        stringResource(R.string.your_fleet_space),
+        stringResource(R.string.passenger_shortcuts),
+    )
     ActionGrid(
         listOf(
-            "Passengers" to "1 linked",
-            "Request update" to "Change transport details",
-            "Notifications" to "Trip and admin messages",
-            "Settings" to "Profile, support, privacy",
+            stringResource(R.string.passengers) to stringResource(R.string.one_linked),
+            stringResource(R.string.request_update) to
+                stringResource(R.string.change_transport_details),
+            stringResource(R.string.notifications) to
+                stringResource(R.string.trip_admin_messages),
+            stringResource(R.string.settings) to
+                stringResource(R.string.profile_support_privacy),
         ),
     )
+}
+
+@Preview(name = "Rider dashboard", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun RiderDashboardPreview() {
+    val snapshot = DemoFleetRepository.loadSnapshot(Products.Rider)
+    LaynFleetTheme(darkTheme = false) {
+        ScreenColumn {
+            RiderDashboard(snapshot, snapshot.memberships.first())
+        }
+    }
+}
+
+@Preview(name = "Rider dashboard · Dark", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun RiderDashboardDarkPreview() {
+    val snapshot = DemoFleetRepository.loadSnapshot(Products.Rider)
+    LaynFleetTheme(darkTheme = true) {
+        ScreenColumn {
+            RiderDashboard(snapshot, snapshot.memberships.first())
+        }
+    }
 }

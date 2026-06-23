@@ -60,6 +60,8 @@ data class Membership(
 
 data class Trip(
     val id: String,
+    val operatorId: String,
+    val riderUserId: String,
     val passengerName: String,
     val pickupLocation: String,
     val dropoffLocation: String,
@@ -71,9 +73,14 @@ data class Trip(
 
 data class FleetSnapshot(
     val config: AppConfig,
+    val userId: String,
     val userName: String,
     val profileComplete: Boolean,
     val memberships: List<Membership>,
     val trips: List<Trip>,
     val unreadNotifications: Int,
-)
+) {
+    fun tripsForRider(operatorId: String): List<Trip> = trips.filter { trip ->
+        trip.operatorId == operatorId && trip.riderUserId == userId
+    }
+}
