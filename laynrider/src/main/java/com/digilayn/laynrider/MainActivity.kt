@@ -14,8 +14,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LaynFleetTheme {
-                LaynFleetFlow(product = Products.Rider) { snapshot, _ ->
-                    RiderDashboard(snapshot)
+                LaynFleetFlow(product = Products.Rider) { snapshot, membership ->
+                    RiderDashboard(snapshot, membership)
                 }
             }
         }

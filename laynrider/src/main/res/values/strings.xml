@@ -2,6 +2,8 @@
     <string name="app_name">LaynRider</string>
     <string name="todays_trips">Today’s trips</string>
     <string name="live_fleet_status">Live status from your fleet team</string>
+    <string name="no_trips_today">No trips scheduled today</string>
+    <string name="no_trips_explanation">Your pickup, drop-off, driver and vehicle details will appear here when your fleet schedules a trip.</string>
     <string name="your_fleet_space">Your fleet space</string>
     <string name="passenger_shortcuts">Passenger and subscription shortcuts</string>
     <string name="passengers">Passengers</string>
