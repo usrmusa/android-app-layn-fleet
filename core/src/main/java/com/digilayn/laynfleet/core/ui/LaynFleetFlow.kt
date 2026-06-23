@@ -1,24 +1,48 @@
 package com.digilayn.laynfleet.core.ui
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.digilayn.laynfleet.core.R
 import com.digilayn.laynfleet.core.data.DemoFleetRepository
 import com.digilayn.laynfleet.core.data.FleetRepository
 import com.digilayn.laynfleet.core.domain.*
+import com.digilayn.laynfleet.core.ui.theme.LaynFleetTheme
 
 private enum class SharedScreen { LOGIN, PROFILE, FLEETS, HOME }
 
@@ -69,7 +93,7 @@ fun LaynFleetFlow(
                         OutlinedButton(
                             onClick = { screen = SharedScreen.LOGIN },
                             modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
-                        ) { Text("Sign out") }
+                        ) { Text(stringResource(R.string.sign_out)) }
                     }
                 }
             }
@@ -79,56 +103,113 @@ fun LaynFleetFlow(
 
 @Composable
 private fun LoginScreen(product: ProductConfig, onContinue: () -> Unit) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.primary)
-            .statusBarsPadding().padding(24.dp),
-        verticalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column {
-            Spacer(Modifier.height(28.dp))
-            BrandMark(product.appName)
-            Text(
-                if (product.product == Product.RIDER) "Your journey,\nkept close."
-                else "Your fleet,\nunder control.",
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 30.dp),
-            )
-            Text(
-                "Sign in with your Digilayn identity.",
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .78f),
-                modifier = Modifier.padding(top = 10.dp),
-            )
-        }
-        Card(shape = RoundedCornerShape(24.dp)) {
-            Column(Modifier.padding(20.dp)) {
-                OutlinedTextField(
+    var isLoginMode by rememberSaveable { mutableStateOf(true) }
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
+    var hasAcceptedTerms by rememberSaveable { mutableStateOf(false) }
+
+    Scaffold(Modifier.fillMaxSize()) { paddingValues ->
+        Column(
+            Modifier.fillMaxSize()
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+                .imePadding(),
+        ) {
+            Column(
+                Modifier.fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                BrandMark(product.appName)
+
+                Text(
+                    stringResource(
+                        if (isLoginMode) R.string.auth_welcome_back
+                        else R.string.auth_create_account,
+                    ),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 32.dp),
+                )
+
+                Spacer(Modifier.height(32.dp))
+
+                AuthTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.email),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 )
-                OutlinedTextField(
+
+                Spacer(Modifier.height(10.dp))
+
+                AuthPasswordField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Password") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                    label = stringResource(R.string.password),
+                    visible = passwordVisible,
+                    onVisibilityChange = { passwordVisible = !passwordVisible },
                 )
+
+                if (!isLoginMode) {
+                    Spacer(Modifier.height(10.dp))
+                    AuthPasswordField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = stringResource(R.string.auth_confirm_password),
+                        visible = confirmPasswordVisible,
+                        onVisibilityChange = {
+                            confirmPasswordVisible = !confirmPasswordVisible
+                        },
+                    )
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                TermsAgreement(
+                    checked = hasAcceptedTerms,
+                    onCheckedChange = { hasAcceptedTerms = it },
+                )
+
+                Spacer(Modifier.height(24.dp))
+
                 Button(
                     onClick = onContinue,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                ) { Text("Continue") }
+                    enabled = hasAcceptedTerms,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().height(50.dp),
+                ) {
+                    Text(
+                        stringResource(
+                            if (isLoginMode) R.string.auth_log_in
+                            else R.string.auth_sign_up,
+                        ),
+                    )
+                }
+
+                TextButton(
+                    onClick = { isLoginMode = !isLoginMode },
+                    modifier = Modifier.padding(top = 8.dp),
+                ) {
+                    Text(
+                        stringResource(
+                            if (isLoginMode) R.string.auth_switch_to_signup
+                            else R.string.auth_switch_to_login,
+                        ),
+                    )
+                }
+
                 Text(
-                    "Demo login · Firebase Auth plugs into the shared core repository.",
+                    stringResource(R.string.demo_login_note),
                     style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 10.dp),
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
@@ -137,39 +218,128 @@ private fun LoginScreen(product: ProductConfig, onContinue: () -> Unit) {
 
 @Composable
 private fun BrandMark(appName: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier.size(44.dp).background(MaterialTheme.colorScheme.tertiary, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("L", fontWeight = FontWeight.Black, color = Color(0xFF13251F))
+    Image(
+        painter = painterResource(R.drawable.laynrider_logo),
+        contentDescription = stringResource(R.string.auth_logo_description, appName),
+        contentScale = ContentScale.Fit,
+        modifier = Modifier.fillMaxWidth(.82f).aspectRatio(3181f / 1521f),
+    )
+}
+
+@Composable
+private fun AuthTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingIcon: (@Composable () -> Unit)? = null,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        keyboardOptions = keyboardOptions,
+        visualTransformation = visualTransformation,
+        trailingIcon = trailingIcon,
+        singleLine = true,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+private fun AuthPasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    visible: Boolean,
+    onVisibilityChange: () -> Unit,
+) {
+    AuthTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        visualTransformation = if (visible) {
+            VisualTransformation.None
+        } else {
+            PasswordVisualTransformation()
+        },
+        trailingIcon = {
+            IconButton(onClick = onVisibilityChange) {
+                Icon(
+                    imageVector = if (visible) {
+                        Icons.Default.VisibilityOff
+                    } else {
+                        Icons.Default.Visibility
+                    },
+                    contentDescription = stringResource(
+                        if (visible) R.string.auth_hide_password
+                        else R.string.auth_show_password,
+                    ),
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun TermsAgreement(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth()
+            .toggleable(value = checked, onValueChange = onCheckedChange)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        val termsText = buildAnnotatedString {
+            append(stringResource(R.string.auth_terms_prefix))
+            withLink(LinkAnnotation.Clickable(tag = "terms") {}) {
+                withStyle(
+                    SpanStyle(
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                        textDecoration = TextDecoration.Underline,
+                    ),
+                ) {
+                    append(stringResource(R.string.auth_terms_link))
+                }
+            }
         }
         Text(
-            "  $appName",
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onPrimary,
-            fontWeight = FontWeight.Bold,
+            text = termsText,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f).padding(start = 4.dp, end = 8.dp),
         )
     }
 }
 
 @Composable
 private fun CompleteProfileScreen(product: ProductConfig, onComplete: () -> Unit) = ScreenColumn {
-    Text("Complete your profile", style = MaterialTheme.typography.headlineMedium)
+    Text(stringResource(R.string.complete_profile), style = MaterialTheme.typography.headlineMedium)
     Text(
-        "${product.appName} needs a few shared identity details before fleet access.",
+        stringResource(R.string.profile_explanation, product.appName),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(top = 6.dp, bottom = 18.dp),
     )
-    OutlinedTextField("", {}, label = { Text("Full name") }, modifier = Modifier.fillMaxWidth())
     OutlinedTextField(
-        "", {}, label = { Text("Phone number") },
+        "",
+        {},
+        label = { Text(stringResource(R.string.full_name)) },
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        "", {}, label = { Text(stringResource(R.string.phone_number)) },
         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
     )
     Button(
         onClick = onComplete,
         modifier = Modifier.fillMaxWidth().padding(top = 18.dp),
-    ) { Text("Save profile") }
+    ) { Text(stringResource(R.string.save_profile)) }
 }
 
 @Composable
@@ -179,10 +349,15 @@ private fun MembershipRouter(
     onSelect: (Membership) -> Unit,
     onSignOut: () -> Unit,
 ) = ScreenColumn {
-    Text("Welcome, ${snapshot.userName}", style = MaterialTheme.typography.headlineMedium)
     Text(
-        if (product.product == Product.RIDER) "Choose the fleet you want to view."
-        else "Choose where you’re working today.",
+        stringResource(R.string.welcome_user, snapshot.userName),
+        style = MaterialTheme.typography.headlineMedium,
+    )
+    Text(
+        stringResource(
+            if (product.product == Product.RIDER) R.string.choose_rider_fleet
+            else R.string.choose_operator_fleet,
+        ),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     Spacer(Modifier.height(20.dp))
@@ -192,9 +367,9 @@ private fun MembershipRouter(
     if (active.isEmpty()) {
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
             Column(Modifier.padding(20.dp)) {
-                Text("No fleet yet", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.no_fleet_yet), fontWeight = FontWeight.Bold)
                 Text(
-                    "Ask your fleet admin to add your registered email. Fleets are not publicly searchable.",
+                    stringResource(R.string.no_fleet_explanation),
                     modifier = Modifier.padding(top = 6.dp),
                 )
             }
@@ -205,11 +380,14 @@ private fun MembershipRouter(
             Spacer(Modifier.height(12.dp))
         }
     }
-    OutlinedButton(onSignOut, Modifier.fillMaxWidth()) { Text("Sign out") }
+    OutlinedButton(onSignOut, Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.sign_out))
+    }
 }
 
 @Composable
 private fun FleetCard(membership: Membership, onClick: () -> Unit) {
+    val openFleetDescription = stringResource(R.string.open_fleet)
     Card(
         Modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
@@ -231,14 +409,24 @@ private fun FleetCard(membership: Membership, onClick: () -> Unit) {
             Column(Modifier.weight(1f).padding(horizontal = 14.dp)) {
                 Text(membership.operator.name, fontWeight = FontWeight.Bold)
                 Text(
-                    "${membership.role.pretty()} · ${membership.operator.welcomeMessage}",
+                    stringResource(
+                        R.string.membership_summary,
+                        membership.role.label(),
+                        membership.operator.welcomeMessage,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text("›", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                "›",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.semantics {
+                    contentDescription = openFleetDescription
+                },
+            )
         }
     }
 }
@@ -263,11 +451,15 @@ private fun DashboardHeader(
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                "${membership.role.pretty()} · ${snapshot.unreadNotifications} new notifications",
+                stringResource(
+                    R.string.notification_summary,
+                    membership.role.label(),
+                    snapshot.unreadNotifications,
+                ),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        OutlinedButton(onSwitchFleet) { Text("Switch") }
+        OutlinedButton(onSwitchFleet) { Text(stringResource(R.string.switch_fleet)) }
     }
 }
 
@@ -334,7 +526,7 @@ fun TripList(trips: List<Trip>, showDriver: Boolean = true) {
             Column(Modifier.padding(18.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        trip.status.pretty(),
+                        trip.status.label(),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.background(
@@ -352,12 +544,20 @@ fun TripList(trips: List<Trip>, showDriver: Boolean = true) {
                     modifier = Modifier.padding(top = 14.dp),
                 )
                 Text(
-                    "${trip.pickupLocation}  →  ${trip.dropoffLocation}",
+                    stringResource(
+                        R.string.trip_route,
+                        trip.pickupLocation,
+                        trip.dropoffLocation,
+                    ),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 if (showDriver) {
                     Text(
-                        "${trip.driverName} · ${trip.vehicle}",
+                        stringResource(
+                            R.string.driver_vehicle,
+                            trip.driverName,
+                            trip.vehicle,
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 10.dp),
                     )
@@ -377,7 +577,62 @@ fun ScreenColumn(content: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-private fun Role.pretty() = name.lowercase().replace('_', ' ')
-    .replaceFirstChar { it.uppercase() }
-private fun TripStatus.pretty() = name.lowercase().replace('_', ' ')
-    .replaceFirstChar { it.uppercase() }
+@Composable
+private fun Role.label() = stringResource(
+    when (this) {
+        Role.SUPER_ADMIN -> R.string.role_super_admin
+        Role.ADMIN -> R.string.role_admin
+        Role.DRIVER -> R.string.role_driver
+        Role.RIDER -> R.string.role_rider
+    },
+)
+
+@Composable
+private fun TripStatus.label() = stringResource(
+    when (this) {
+        TripStatus.SCHEDULED -> R.string.trip_status_scheduled
+        TripStatus.DRIVER_ON_THE_WAY -> R.string.trip_status_driver_on_the_way
+        TripStatus.DRIVER_WAITING_OUTSIDE -> R.string.trip_status_driver_waiting_outside
+        TripStatus.PASSENGER_PICKED_UP -> R.string.trip_status_passenger_picked_up
+        TripStatus.ARRIVED_AT_DESTINATION -> R.string.trip_status_arrived_at_destination
+        TripStatus.COMPLETED -> R.string.trip_status_completed
+        TripStatus.DELAYED -> R.string.trip_status_delayed
+        TripStatus.CANCELLED -> R.string.trip_status_cancelled
+        TripStatus.DRIVER_UNAVAILABLE -> R.string.trip_status_driver_unavailable
+        TripStatus.VEHICLE_CHANGED -> R.string.trip_status_vehicle_changed
+        TripStatus.DRIVER_CHANGED -> R.string.trip_status_driver_changed
+    },
+)
+
+@Preview(name = "Rider login", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun RiderLoginPreview() {
+    LaynFleetTheme(darkTheme = false) {
+        LoginScreen(Products.Rider) {}
+    }
+}
+
+@Preview(name = "Operator login · Dark", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun OperatorLoginDarkPreview() {
+    LaynFleetTheme(darkTheme = true) {
+        LoginScreen(Products.Operator) {}
+    }
+}
+
+@Preview(name = "Complete profile", showBackground = true)
+@Composable
+private fun CompleteProfilePreview() {
+    LaynFleetTheme(darkTheme = false) {
+        CompleteProfileScreen(Products.Rider) {}
+    }
+}
+
+@Preview(name = "Fleet selection", showBackground = true)
+@Composable
+private fun MembershipRouterPreview() {
+    val snapshot = DemoFleetRepository.loadSnapshot(Products.Rider)
+    LaynFleetTheme(darkTheme = false) {
+        MembershipRouter(Products.Rider, snapshot, {}, {})
+    }
+}

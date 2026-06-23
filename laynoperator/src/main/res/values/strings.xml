@@ -1,3 +1,27 @@
 <resources>
     <string name="app_name">LaynOperator</string>
+    <string name="your_route">Your route</string>
+    <string name="assigned_riders_only">Only assigned riders are visible</string>
+    <string name="stops">Stops</string>
+    <string name="start">Start</string>
+    <string name="vehicle">Vehicle</string>
+    <string name="operations_overview">Operations overview</string>
+    <string name="attention_today">What needs attention today</string>
+    <string name="trips">Trips</string>
+    <string name="riders">Riders</string>
+    <string name="drivers">Drivers</string>
+    <string name="add_rider">Add rider</string>
+    <string name="invite_by_email">Invite by email</string>
+    <string name="add_driver">Add driver</string>
+    <string name="invite_and_accept">Invite and accept</string>
+    <string name="vehicles">Vehicles</string>
+    <string name="three_active">3 active</string>
+    <string name="route_groups">Route groups</string>
+    <string name="two_running">2 running</string>
+    <string name="send_notice">Send notice</string>
+    <string name="riders_or_drivers">Riders or drivers</string>
+    <string name="admin_partner">Admin partner</string>
+    <string name="same_permissions">Same permissions</string>
+    <string name="trips_today">Trips today</string>
+    <string name="scheduled_count">%1$d scheduled</string>
 </resources>

@@ -25,6 +25,7 @@ object FirestorePaths {
 
 object DemoFleetRepository : FleetRepository {
     override fun loadSnapshot(product: ProductConfig): FleetSnapshot {
+        val currentUserId = "user-lerato"
         val schoolRun = Operator(
             "soweto-school-run", "Soweto School Run", "SSR",
             "Safe trips. Familiar faces.", 0xFF175C4C,
@@ -46,18 +47,33 @@ object DemoFleetRepository : FleetRepository {
         }
         return FleetSnapshot(
             AppConfig(product.appId, "1.0", "1.0"),
+            userId = currentUserId,
             userName = "Lerato",
             profileComplete = true,
             memberships = memberships,
             trips = listOf(
                 Trip(
-                    "trip-001", "Amahle", "Orlando West", "Maponya Academy",
+                    "trip-001", schoolRun.id, currentUserId,
+                    "Amahle", "Orlando West", "Maponya Academy",
                     "06:45", "Thabo M.", "Toyota Quantum · GP 245-771",
                     TripStatus.DRIVER_ON_THE_WAY,
                 ),
                 Trip(
-                    "trip-002", "Amahle", "Maponya Academy", "Orlando West",
+                    "trip-002", schoolRun.id, currentUserId,
+                    "Amahle", "Maponya Academy", "Orlando West",
                     "15:00", "Thabo M.", "Toyota Quantum · GP 245-771",
+                    TripStatus.SCHEDULED,
+                ),
+                Trip(
+                    "trip-003", schoolRun.id, "user-naledi",
+                    "Kagiso", "Diepkloof", "Maponya Academy",
+                    "07:10", "Thabo M.", "Toyota Quantum · GP 245-771",
+                    TripStatus.SCHEDULED,
+                ),
+                Trip(
+                    "trip-004", cityLink.id, currentUserId,
+                    "Lerato", "Braamfontein", "Rosebank",
+                    "08:30", "Zanele K.", "Honda BR-V · GP 812-440",
                     TripStatus.SCHEDULED,
                 ),
             ),
