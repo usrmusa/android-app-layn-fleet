@@ -14,11 +14,47 @@ android {
         versionCode = 1
         versionName = "1.0"
     }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("dev") {
+            dimension = "environment"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            buildConfigField("String", "ENVIRONMENT", "\"dev\"")
+            buildConfigField("String", "FIRESTORE_NAMESPACE", "\"laynfleet_dev\"")
+            buildConfigField("boolean", "IS_PRODUCTION", "false")
+            resValue("string", "app_name", "LaynRider Test")
+        }
+        create("prod") {
+            dimension = "environment"
+            buildConfigField("String", "ENVIRONMENT", "\"prod\"")
+            buildConfigField("String", "FIRESTORE_NAMESPACE", "\"laynfleet_prod\"")
+            buildConfigField("boolean", "IS_PRODUCTION", "true")
+            resValue("string", "app_name", "LaynRider")
+        }
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        buildConfig = true
+        compose = true
+        resValues = true
+    }
 }
 
 dependencies {
