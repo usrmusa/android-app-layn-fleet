@@ -44,24 +44,47 @@ import com.digilayn.laynfleet.core.data.FleetRepository
 import com.digilayn.laynfleet.core.domain.*
 import com.digilayn.laynfleet.core.ui.theme.LaynFleetTheme
 
-private enum class SharedScreen { LOGIN, PROFILE, FLEETS, HOME }
+private enum class SharedScreen { SPLASH, WELCOME, LOGIN, PROFILE, FLEETS, HOME }
+
+interface AuthSessionResolver {
+    fun currentUserId(): String?
+}
+
+object SignedOutAuthSessionResolver : AuthSessionResolver {
+    override fun currentUserId(): String? = null
+}
 
 @Composable
 fun LaynFleetFlow(
     product: ProductConfig,
+    authSessionResolver: AuthSessionResolver = SignedOutAuthSessionResolver,
     repository: FleetRepository = DemoFleetRepository,
     dashboard: @Composable (FleetSnapshot, Membership) -> Unit,
 ) {
-    var screen by remember { mutableStateOf(SharedScreen.LOGIN) }
+    var screen by remember { mutableStateOf(SharedScreen.SPLASH) }
     var snapshot by remember { mutableStateOf<FleetSnapshot?>(null) }
     var membership by remember { mutableStateOf<Membership?>(null) }
 
+    fun loadAuthenticatedSession() {
+        val loaded = repository.loadSnapshot(product)
+        snapshot = loaded
+        screen = if (loaded.profileComplete) SharedScreen.FLEETS else SharedScreen.PROFILE
+    }
+
     Surface(Modifier.fillMaxSize()) {
         when (screen) {
+            SharedScreen.SPLASH -> SplashScreen(product) {
+                if (authSessionResolver.currentUserId() == null) {
+                    screen = SharedScreen.WELCOME
+                } else {
+                    loadAuthenticatedSession()
+                }
+            }
+            SharedScreen.WELCOME -> WelcomeScreen(product) {
+                screen = SharedScreen.LOGIN
+            }
             SharedScreen.LOGIN -> LoginScreen(product) {
-                val loaded = repository.loadSnapshot(product)
-                snapshot = loaded
-                screen = if (loaded.profileComplete) SharedScreen.FLEETS else SharedScreen.PROFILE
+                loadAuthenticatedSession()
             }
             SharedScreen.PROFILE -> CompleteProfileScreen(product) {
                 screen = SharedScreen.FLEETS
@@ -102,6 +125,96 @@ fun LaynFleetFlow(
 }
 
 @Composable
+private fun SplashScreen(product: ProductConfig, onAuthStateResolved: () -> Unit) {
+    LaunchedEffect(product) {
+        onAuthStateResolved()
+    }
+
+    Box(
+        Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 32.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            BrandMark(product.appName)
+            Spacer(Modifier.height(28.dp))
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(34.dp),
+            )
+            Text(
+                stringResource(R.string.splash_checking_session),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun WelcomeScreen(product: ProductConfig, onContinue: () -> Unit) {
+    var hasAcceptedTerms by rememberSaveable { mutableStateOf(false) }
+
+    Scaffold(Modifier.fillMaxSize()) { paddingValues ->
+        Column(
+            Modifier.fillMaxSize()
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+        ) {
+            Column(
+                Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                BrandMark(product.appName)
+                Text(
+                    stringResource(R.string.welcome_title, product.appName),
+                    style = MaterialTheme.typography.headlineMedium,
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 32.dp),
+                )
+                Text(
+                    stringResource(
+                        if (product.product == Product.RIDER) {
+                            R.string.welcome_rider_message
+                        } else {
+                            R.string.welcome_operator_message
+                        },
+                    ),
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 12.dp),
+                )
+            }
+
+            TermsAgreement(
+                checked = hasAcceptedTerms,
+                onCheckedChange = { hasAcceptedTerms = it },
+            )
+            Text(
+                stringResource(R.string.welcome_terms_required),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 16.dp),
+            )
+            Button(
+                onClick = onContinue,
+                enabled = hasAcceptedTerms,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+            ) {
+                Text(stringResource(R.string.continue_label))
+            }
+        }
+    }
+}
+
+@Composable
 private fun LoginScreen(product: ProductConfig, onContinue: () -> Unit) {
     var isLoginMode by rememberSaveable { mutableStateOf(true) }
     var email by rememberSaveable { mutableStateOf("") }
@@ -109,7 +222,6 @@ private fun LoginScreen(product: ProductConfig, onContinue: () -> Unit) {
     var confirmPassword by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
-    var hasAcceptedTerms by rememberSaveable { mutableStateOf(false) }
 
     Scaffold(Modifier.fillMaxSize()) { paddingValues ->
         Column(
@@ -171,16 +283,8 @@ private fun LoginScreen(product: ProductConfig, onContinue: () -> Unit) {
 
                 Spacer(Modifier.height(24.dp))
 
-                TermsAgreement(
-                    checked = hasAcceptedTerms,
-                    onCheckedChange = { hasAcceptedTerms = it },
-                )
-
-                Spacer(Modifier.height(24.dp))
-
                 Button(
                     onClick = onContinue,
-                    enabled = hasAcceptedTerms,
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth().height(50.dp),
                 ) {
@@ -203,14 +307,6 @@ private fun LoginScreen(product: ProductConfig, onContinue: () -> Unit) {
                         ),
                     )
                 }
-
-                Text(
-                    stringResource(R.string.demo_login_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
             }
         }
     }
@@ -617,6 +713,14 @@ private fun RiderLoginPreview() {
 private fun OperatorLoginDarkPreview() {
     LaynFleetTheme(darkTheme = true) {
         LoginScreen(Products.Operator) {}
+    }
+}
+
+@Preview(name = "Rider welcome", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun RiderWelcomePreview() {
+    LaynFleetTheme(darkTheme = false) {
+        WelcomeScreen(Products.Rider) {}
     }
 }
 

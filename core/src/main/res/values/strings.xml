@@ -3,6 +3,11 @@
     <string name="rider_tagline">Your journey,\nkept close.</string>
     <string name="operator_tagline">Your fleet,\nunder control.</string>
     <string name="sign_in_message">Sign in with your Digilayn identity.</string>
+    <string name="splash_checking_session">Checking your session…</string>
+    <string name="welcome_title">Welcome to %1$s</string>
+    <string name="welcome_rider_message">See your daily route, trip status, driver updates, and transport details in one place.</string>
+    <string name="welcome_operator_message">Manage daily fleet movement, driver assignments, route visibility, and admin operations in one place.</string>
+    <string name="welcome_terms_required">Accept the terms and conditions to continue.</string>
     <string name="email">Email</string>
     <string name="password">Password</string>
     <string name="continue_label">Continue</string>
