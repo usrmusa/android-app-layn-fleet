@@ -19,6 +19,10 @@ object ValidationRules {
     fun minLength(length: Int, message: String): ValidationRule = ValidationRule(message) {
         it.length >= length
     }
+
+    fun matches(expected: () -> String, message: String): ValidationRule = ValidationRule(message) {
+        it == expected()
+    }
 }
 
 fun validate(value: String, rules: List<ValidationRule>): String? =

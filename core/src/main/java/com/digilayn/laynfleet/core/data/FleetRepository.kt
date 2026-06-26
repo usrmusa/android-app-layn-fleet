@@ -1,9 +1,22 @@
 package com.digilayn.laynfleet.core.data
 
 import com.digilayn.laynfleet.core.domain.*
+import com.digilayn.laynfleet.core.util.FlowLogger
+import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 interface FleetRepository {
     fun loadSnapshot(product: ProductConfig): FleetSnapshot
+}
+
+interface RegistrationProfileRepository {
+    suspend fun createProfileStubs(userId: String, email: String?, product: ProductConfig): Result<Unit>
+}
+
+object GlobalIdentityPaths {
+    fun user(userId: String) = "users/$userId"
 }
 
 object FirestorePaths {
@@ -22,6 +35,74 @@ object FirestorePaths {
     fun devices() = "$ROOT/devices"
     fun deletionRequests() = "$ROOT/deletionRequests"
 }
+
+class FirestoreRegistrationProfileRepository(
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+) : RegistrationProfileRepository {
+    override suspend fun createProfileStubs(
+        userId: String,
+        email: String?,
+        product: ProductConfig,
+    ): Result<Unit> = runCatching {
+        FlowLogger.d("FirestoreRegistrationProfileRepository", "Creating profile stubs for userId: $userId, email: $email")
+        val now = FieldValue.serverTimestamp()
+        val globalPath = GlobalIdentityPaths.user(userId)
+        val fleetPath = FirestorePaths.user(userId)
+
+        val globalProfile = mapOf(
+            "userId" to userId,
+            "email" to email,
+            "createdByAppId" to product.appId,
+            "profileComplete" to false,
+            "createdAt" to now,
+            "updatedAt" to now,
+        )
+        val fleetProfile = mapOf(
+            "userId" to userId,
+            "email" to email,
+            "createdByAppId" to product.appId,
+            "fleetProfileCreated" to true,
+            "profileComplete" to false,
+            "createdAt" to now,
+            "updatedAt" to now,
+        )
+
+        FlowLogger.d("FirestoreRegistrationProfileRepository", "Batch write started. Global path: $globalPath, Fleet path: $fleetPath")
+        firestore.runBatch { batch ->
+            batch.set(firestore.document(globalPath), globalProfile)
+            batch.set(firestore.document(fleetPath), fleetProfile)
+        }.await()
+        FlowLogger.i("FirestoreRegistrationProfileRepository", "Batch write successful for $userId")
+    }.onFailure {
+        FlowLogger.e("FirestoreRegistrationProfileRepository", "Profile stub creation failed for $userId", it)
+    }
+}
+
+object InMemoryRegistrationProfileRepository : RegistrationProfileRepository {
+    var lastStub: RegistrationProfileStub? = null
+        private set
+
+    override suspend fun createProfileStubs(
+        userId: String,
+        email: String?,
+        product: ProductConfig,
+    ): Result<Unit> {
+        lastStub = RegistrationProfileStub(
+            userId = userId,
+            email = email,
+            createdByAppId = product.appId,
+            createdAt = Timestamp.now(),
+        )
+        return Result.success(Unit)
+    }
+}
+
+data class RegistrationProfileStub(
+    val userId: String,
+    val email: String?,
+    val createdByAppId: String,
+    val createdAt: Timestamp,
+)
 
 object DemoFleetRepository : FleetRepository {
     override fun loadSnapshot(product: ProductConfig): FleetSnapshot {

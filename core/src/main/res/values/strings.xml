@@ -16,6 +16,7 @@
     <string name="auth_continue_with_google">Continue with Google</string>
     <string name="auth_email_password_option">Or use email and password</string>
     <string name="auth_create_account">Create Account</string>
+    <string name="auth_registration_message">Create your Digilayn sign-in first. Profile details come next.</string>
     <string name="auth_confirm_password">Confirm Password</string>
     <string name="auth_log_in">Log In</string>
     <string name="auth_sign_up">Sign Up</string>
@@ -26,7 +27,9 @@
     <string name="auth_show_password">Show password</string>
     <string name="auth_hide_password">Hide password</string>
     <string name="auth_signing_in">Signing in…</string>
+    <string name="auth_creating_account">Creating account…</string>
     <string name="auth_error_title">Sign-in failed</string>
+    <string name="auth_registration_error_title">Registration failed</string>
     <string name="auth_success_title">Signed in</string>
     <string name="auth_success">Your account is ready.</string>
     <string name="auth_logo_description">%1$s logo</string>

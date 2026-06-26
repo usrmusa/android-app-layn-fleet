@@ -2,7 +2,7 @@
 
 ## Status
 
-Draft for confirmation before implementation.
+Implemented initial shared email/password registration wiring.
 
 ## Blueprint Reference
 
@@ -93,6 +93,16 @@ Login
     -> Route to Complete Profile
 ```
 
+## Current Implementation
+
+- `LoginScreen` exposes the secondary create-account route.
+- `RegistrationScreen` collects email, password, and confirm password only.
+- Registration validates email format, password minimum length, and password confirmation before Firebase is called.
+- `AuthService.createAccountWithEmail` wraps Firebase `createUserWithEmailAndPassword`.
+- `FirestoreRegistrationProfileRepository` creates the incomplete global `/users/{userId}` and `/kasilayn/LaynFleet/users/{userId}` profile stubs.
+- Registration success routes to the shared complete-profile screen.
+- Rider and operator apps inject the Firestore registration repository.
+
 ## Profile Creation On Success
 
 After Firebase account creation succeeds, create profile stubs before routing onward:
@@ -165,7 +175,7 @@ No UI unit tests are required for this slice.
 - Username is not collected on registration.
 - Phone is not collected on registration.
 
-## Open Decisions Before Build
+## Remaining Decisions
 
 - Should the global `/users/{userId}` stub include email only, or also provider metadata?
-- Should profile stub creation be client-side first, or immediately isolated behind repository methods ready for Cloud Functions later?
+- Profile stub creation is currently client-side behind repository methods so it can move behind Cloud Functions later without changing UI flow.
