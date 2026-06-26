@@ -32,6 +32,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
     implementation(libs.googleid)
     implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)

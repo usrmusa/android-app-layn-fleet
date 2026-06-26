@@ -23,10 +23,12 @@ import com.digilayn.laynfleet.core.auth.AuthService
 import com.digilayn.laynfleet.core.auth.SignedOutAuthService
 import com.digilayn.laynfleet.core.data.DemoFleetRepository
 import com.digilayn.laynfleet.core.data.FleetRepository
+import com.digilayn.laynfleet.core.data.InMemoryRegistrationProfileRepository
+import com.digilayn.laynfleet.core.data.RegistrationProfileRepository
 import com.digilayn.laynfleet.core.domain.*
 import com.digilayn.laynfleet.core.ui.theme.LaynFleetTheme
 
-private enum class SharedScreen { SPLASH, WELCOME, LOGIN, PROFILE, FLEETS, HOME }
+private enum class SharedScreen { SPLASH, WELCOME, LOGIN, REGISTER, PROFILE, FLEETS, HOME }
 
 @Composable
 fun LaynFleetFlow(
@@ -34,6 +36,7 @@ fun LaynFleetFlow(
     googleServerClientId: String = "",
     authService: AuthService = SignedOutAuthService,
     repository: FleetRepository = DemoFleetRepository,
+    registrationRepository: RegistrationProfileRepository = InMemoryRegistrationProfileRepository,
     dashboard: @Composable (FleetSnapshot, Membership) -> Unit,
 ) {
     var screen by remember { mutableStateOf(SharedScreen.SPLASH) }
@@ -62,9 +65,17 @@ fun LaynFleetFlow(
                 product = product,
                 googleServerClientId = googleServerClientId,
                 authService = authService,
+                onCreateAccount = { screen = SharedScreen.REGISTER },
             ) {
                 loadAuthenticatedSession()
             }
+            SharedScreen.REGISTER -> RegistrationScreen(
+                product = product,
+                authService = authService,
+                registrationRepository = registrationRepository,
+                onBack = { screen = SharedScreen.LOGIN },
+                onProfileRequired = { screen = SharedScreen.PROFILE },
+            )
             SharedScreen.PROFILE -> CompleteProfileScreen(product) {
                 screen = SharedScreen.FLEETS
             }

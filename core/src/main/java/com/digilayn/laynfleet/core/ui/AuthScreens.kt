@@ -27,8 +27,10 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,17 +64,21 @@ import com.digilayn.laynfleet.core.auth.AuthService
 import com.digilayn.laynfleet.core.auth.FirebaseAuthErrorMapper
 import com.digilayn.laynfleet.core.auth.GoogleCredentialSignIn
 import com.digilayn.laynfleet.core.auth.SignedOutAuthService
+import com.digilayn.laynfleet.core.data.InMemoryRegistrationProfileRepository
+import com.digilayn.laynfleet.core.data.RegistrationProfileRepository
 import com.digilayn.laynfleet.core.domain.Product
 import com.digilayn.laynfleet.core.domain.ProductConfig
 import com.digilayn.laynfleet.core.domain.Products
 import com.digilayn.laynfleet.core.ui.theme.LaynFleetTheme
 import com.digilayn.laynfleet.core.validation.ValidationRules
 import com.digilayn.laynfleet.core.validation.validate
+import com.digilayn.laynfleet.core.util.FlowLogger
 import kotlinx.coroutines.launch
 
 @Composable
 internal fun SplashScreen(product: ProductConfig, onAuthStateResolved: () -> Unit) {
     LaunchedEffect(product) {
+        FlowLogger.d("SplashScreen", "Splash started, resolving auth state")
         onAuthStateResolved()
     }
 
@@ -148,7 +154,10 @@ internal fun WelcomeScreen(product: ProductConfig, onContinue: () -> Unit) {
                 modifier = Modifier.padding(start = 52.dp, top = 2.dp, bottom = 16.dp),
             )
             Button(
-                onClick = onContinue,
+                onClick = {
+                    FlowLogger.i("WelcomeScreen", "Continue clicked, terms accepted")
+                    onContinue()
+                },
                 enabled = hasAcceptedTerms,
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth().height(50.dp),
@@ -164,6 +173,7 @@ internal fun LoginScreen(
     product: ProductConfig,
     googleServerClientId: String,
     authService: AuthService,
+    onCreateAccount: () -> Unit,
     onContinue: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -233,6 +243,7 @@ internal fun LoginScreen(
 
                 Button(
                     onClick = {
+                        FlowLogger.i("LoginScreen", "Google sign-in button clicked")
                         errorMessage = null
                         isLoading = true
                         scope.launch {
@@ -240,9 +251,13 @@ internal fun LoginScreen(
                                 .requestIdToken(context)
                             credentialResult.fold(
                                 onSuccess = { idToken ->
+                                    FlowLogger.d("LoginScreen", "Google token received, signing in with Firebase")
                                     handleAuthResult(authService.signInWithGoogleIdToken(idToken))
                                 },
-                                onFailure = { handleAuthResult(Result.failure(it)) },
+                                onFailure = {
+                                    FlowLogger.e("LoginScreen", "Google credential retrieval failed", it)
+                                    handleAuthResult(Result.failure(it))
+                                },
                             )
                         }
                     },
@@ -303,13 +318,16 @@ internal fun LoginScreen(
 
                 Button(
                     onClick = {
+                        FlowLogger.i("LoginScreen", "Email login button clicked for email: $email")
                         attemptedEmailLogin = true
                         if (validate(email, emailRules) != null || validate(password, passwordRules) != null) {
+                            FlowLogger.d("LoginScreen", "Email login validation failed")
                             return@Button
                         }
                         errorMessage = null
                         isLoading = true
                         scope.launch {
+                            FlowLogger.d("LoginScreen", "Proceeding with email sign-in")
                             handleAuthResult(authService.signInWithEmail(email, password))
                         }
                     },
@@ -326,6 +344,229 @@ internal fun LoginScreen(
                 errorMessage?.let {
                     FeedbackCard(
                         title = stringResource(R.string.auth_error_title),
+                        message = it,
+                        tone = FeedbackTone.NEGATIVE,
+                        modifier = Modifier.padding(top = 18.dp),
+                    )
+                }
+
+                TextButton(
+                    onClick = onCreateAccount,
+                    enabled = !isLoading,
+                    modifier = Modifier.padding(top = 14.dp),
+                ) {
+                    Text(stringResource(R.string.auth_switch_to_signup))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun RegistrationScreen(
+    product: ProductConfig,
+    authService: AuthService,
+    registrationRepository: RegistrationProfileRepository,
+    onBack: () -> Unit,
+    onProfileRequired: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    var email by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+    var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
+    var isLoading by rememberSaveable { mutableStateOf(false) }
+    var errorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var attemptedSubmit by rememberSaveable { mutableStateOf(false) }
+
+    val emailRules = remember {
+        listOf(
+            ValidationRules.required("Email is required."),
+            ValidationRules.email("Enter a valid email address."),
+        )
+    }
+    val passwordRules = remember {
+        listOf(
+            ValidationRules.required("Password is required."),
+            ValidationRules.minLength(6, "Password must be at least 6 characters."),
+        )
+    }
+    val confirmPasswordRules = remember(password) {
+        listOf(
+            ValidationRules.required("Confirm password is required."),
+            ValidationRules.matches({ password }, "Passwords must match."),
+        )
+    }
+
+    fun validationError(): Boolean =
+        validate(email, emailRules) != null ||
+            validate(password, passwordRules) != null ||
+            validate(confirmPassword, confirmPasswordRules) != null
+
+    fun handleRegistrationFailure(throwable: Throwable) {
+        errorMessage = when (throwable) {
+            is com.digilayn.laynfleet.core.auth.AuthFailure -> throwable.authError.message
+            else -> FirebaseAuthErrorMapper.fromThrowable(throwable).message
+        }
+    }
+
+    Scaffold(Modifier.fillMaxSize()) { paddingValues ->
+        Column(
+            Modifier.fillMaxSize()
+                .padding(paddingValues)
+                .consumeWindowInsets(paddingValues)
+                .imePadding(),
+        ) {
+            Column(
+                Modifier.fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                BrandMark(product.appName)
+                Text(
+                    stringResource(R.string.auth_create_account),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 32.dp),
+                )
+                Text(
+                    stringResource(R.string.auth_registration_message),
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 24.dp),
+                )
+
+                ValidationInput(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = stringResource(R.string.email),
+                    rules = emailRules,
+                    showErrors = attemptedSubmit,
+                    enabled = !isLoading,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                ValidationInput(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = stringResource(R.string.password),
+                    rules = passwordRules,
+                    showErrors = attemptedSubmit,
+                    enabled = !isLoading,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    visualTransformation = if (passwordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        PasswordVisibilityButton(
+                            visible = passwordVisible,
+                            onVisibilityChange = { passwordVisible = !passwordVisible },
+                            showContentDescription = stringResource(R.string.auth_show_password),
+                            hideContentDescription = stringResource(R.string.auth_hide_password),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                ValidationInput(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it },
+                    label = stringResource(R.string.auth_confirm_password),
+                    rules = confirmPasswordRules,
+                    showErrors = attemptedSubmit,
+                    enabled = !isLoading,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    visualTransformation = if (confirmPasswordVisible) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    trailingIcon = {
+                        PasswordVisibilityButton(
+                            visible = confirmPasswordVisible,
+                            onVisibilityChange = { confirmPasswordVisible = !confirmPasswordVisible },
+                            showContentDescription = stringResource(R.string.auth_show_password),
+                            hideContentDescription = stringResource(R.string.auth_hide_password),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
+                Button(
+                    onClick = {
+                        FlowLogger.i("RegistrationScreen", "Register button clicked for email: $email")
+                        attemptedSubmit = true
+                        if (validationError()) {
+                            FlowLogger.d("RegistrationScreen", "Registration validation failed")
+                            return@Button
+                        }
+                        errorMessage = null
+                        isLoading = true
+                        scope.launch {
+                            FlowLogger.d("RegistrationScreen", "Creating Firebase account")
+                            authService.createAccountWithEmail(email, password)
+                                .fold(
+                                    onSuccess = { user ->
+                                        FlowLogger.i("RegistrationScreen", "Firebase account created. UID: ${user.userId}")
+                                        FlowLogger.d("RegistrationScreen", "Creating profile stubs for UID: ${user.userId}")
+                                        registrationRepository.createProfileStubs(
+                                            userId = user.userId,
+                                            email = user.email ?: email.trim(),
+                                            product = product,
+                                        ).fold(
+                                            onSuccess = {
+                                                FlowLogger.i("RegistrationScreen", "Profile stubs created successfully")
+                                                isLoading = false
+                                                onProfileRequired()
+                                            },
+                                            onFailure = {
+                                                FlowLogger.e("RegistrationScreen", "Profile stub creation failed", it)
+                                                isLoading = false
+                                                handleRegistrationFailure(it)
+                                            },
+                                        )
+                                    },
+                                    onFailure = {
+                                        FlowLogger.e("RegistrationScreen", "Firebase account creation failed", it)
+                                        isLoading = false
+                                        handleRegistrationFailure(it)
+                                    },
+                                )
+                        }
+                    },
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 14.dp).height(50.dp),
+                ) {
+                    Text(
+                        if (isLoading) stringResource(R.string.auth_creating_account)
+                        else stringResource(R.string.auth_sign_up),
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onBack,
+                    enabled = !isLoading,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp).height(50.dp),
+                ) {
+                    Text(stringResource(R.string.auth_switch_to_login))
+                }
+
+                errorMessage?.let {
+                    FeedbackCard(
+                        title = stringResource(R.string.auth_registration_error_title),
                         message = it,
                         tone = FeedbackTone.NEGATIVE,
                         modifier = Modifier.padding(top = 18.dp),
@@ -385,7 +626,7 @@ private fun TermsAgreement(
 @Composable
 private fun LoginLightPreview() {
     LaynFleetTheme(darkTheme = false) {
-        LoginScreen(Products.Rider, "preview-client-id", SignedOutAuthService) {}
+        LoginScreen(Products.Rider, "preview-client-id", SignedOutAuthService, {}) {}
     }
 }
 
@@ -393,7 +634,7 @@ private fun LoginLightPreview() {
 @Composable
 private fun LoginDarkPreview() {
     LaynFleetTheme(darkTheme = true) {
-        LoginScreen(Products.Operator, "preview-client-id", SignedOutAuthService) {}
+        LoginScreen(Products.Operator, "preview-client-id", SignedOutAuthService, {}) {}
     }
 }
 
@@ -401,7 +642,49 @@ private fun LoginDarkPreview() {
 @Composable
 private fun LoginMinimumPreview() {
     LaynFleetTheme(darkTheme = false) {
-        LoginScreen(Products.Rider, "preview-client-id", SignedOutAuthService) {}
+        LoginScreen(Products.Rider, "preview-client-id", SignedOutAuthService, {}) {}
+    }
+}
+
+@Preview(name = "Registration light", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun RegistrationLightPreview() {
+    LaynFleetTheme(darkTheme = false) {
+        RegistrationScreen(
+            Products.Rider,
+            SignedOutAuthService,
+            InMemoryRegistrationProfileRepository,
+            {},
+            {},
+        )
+    }
+}
+
+@Preview(name = "Registration dark", showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun RegistrationDarkPreview() {
+    LaynFleetTheme(darkTheme = true) {
+        RegistrationScreen(
+            Products.Operator,
+            SignedOutAuthService,
+            InMemoryRegistrationProfileRepository,
+            {},
+            {},
+        )
+    }
+}
+
+@Preview(name = "Registration minimum", showBackground = true, widthDp = 320, heightDp = 568)
+@Composable
+private fun RegistrationMinimumPreview() {
+    LaynFleetTheme(darkTheme = false) {
+        RegistrationScreen(
+            Products.Rider,
+            SignedOutAuthService,
+            InMemoryRegistrationProfileRepository,
+            {},
+            {},
+        )
     }
 }
 

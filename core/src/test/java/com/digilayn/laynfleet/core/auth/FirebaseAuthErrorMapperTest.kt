@@ -18,6 +18,27 @@ class FirebaseAuthErrorMapperTest {
         )
     }
 
+    @Test fun mapsEmailAlreadyInUseToLoginHint() {
+        assertEquals(
+            "This email is already registered. Log in instead.",
+            FirebaseAuthErrorMapper.messageFor("ERROR_EMAIL_ALREADY_IN_USE"),
+        )
+    }
+
+    @Test fun mapsWeakPasswordToMinimumLengthMessage() {
+        assertEquals(
+            "Password must be at least 6 characters.",
+            FirebaseAuthErrorMapper.messageFor("ERROR_WEAK_PASSWORD"),
+        )
+    }
+
+    @Test fun mapsDisabledEmailRegistrationToSupportMessage() {
+        assertEquals(
+            "Email and password registration is not enabled. Contact support.",
+            FirebaseAuthErrorMapper.messageFor("ERROR_OPERATION_NOT_ALLOWED"),
+        )
+    }
+
     @Test fun fallsBackToGenericSignInMessage() {
         assertEquals(
             "We could not sign you in. Please try again.",
