@@ -55,3 +55,9 @@ Examples:
 - Sign-up if enabled later.
 - Complete profile.
 - Phone number.
+
+## Current Implementation Notes
+
+- Email/password login uses local validation before Firebase is called.
+- Errors can be hidden until a submit attempt through the input's error visibility control.
+- Validation rules are appendable and tested in JVM unit tests.

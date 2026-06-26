@@ -20,6 +20,12 @@ Keep product and development flow notes in one stable Obsidian-like folder insid
 
 `dev-flow/`
 
+The master product reference is:
+
+`dev-flow/Layn_Fleet_Master_Blueprint.docx`
+
+When a feature touches Firestore paths, identity/profile behavior, routing, or product rules, verify the relevant `dev-flow` spec against the blueprint before implementation.
+
 Recommended file naming:
 
 - `00_cold_start.md`
@@ -29,6 +35,31 @@ Recommended file naming:
 - `components/feedback_card.md`
 
 Do not create a new docs folder each chat. Extend or update the existing `dev-flow` files.
+
+## Documentation-First Workflow
+
+Before building or changing a feature:
+
+1. Check `dev-flow/` for the matching feature spec.
+2. If the spec is missing, create it first.
+3. If the spec exists but does not cover the requested change, update it first.
+4. Verify the requested behavior against the spec.
+5. Build only after the spec is documented.
+
+Every completed implementation must update the relevant `dev-flow` document in the same work session. Do not let implementation and specs drift apart.
+
+## UI Screen Requirements
+
+Every new or modified Compose screen must support:
+
+- Light mode preview.
+- Dark mode preview.
+- Minimum/small screen preview.
+- Scrollable layout for content that can exceed the viewport.
+- Keyboard-safe behavior for form screens.
+- Wrapped text that does not clip or overlap on small screens.
+
+When working on pre-existing screens, add missing previews or scroll support if the touched screen does not meet these requirements. Keep previews focused on real screen states rather than decorative snapshots.
 
 ## Authentication Direction
 
